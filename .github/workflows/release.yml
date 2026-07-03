@@ -1,0 +1,50 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build shaderpack zip
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          ZIP_NAME="Byteshade_PT_${TAG}.zip"
+          cd shaders
+          zip -r "../${ZIP_NAME}" .
+          echo "ZIP_NAME=${ZIP_NAME}" >> $GITHUB_ENV
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Byteshade PT ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          body: |
+            ## Byteshade PT ${{ github.ref_name }}
+
+            Ultra-realistic path-traced shaderpack for Iris Shaders.
+
+            ### Features
+            - Deferred PBR G-buffer
+            - Screen-space global illumination
+            - Screen-space reflections with binary-search refinement
+            - Cascaded shadow maps (2048x2048, PCF)
+            - Physically-based BRDF (GGX, Smith, Fresnel-Schlick)
+            - Atmospheric scattering (Rayleigh + Mie)
+            - Gerstner wave water
+            - Temporal accumulation denoising
+            - ACES Filmic tonemapping
+            - Cinematic post-processing (bloom, DoF, CA, vignette, grain)
+
+            ### Installation
+            Download the zip and place it in your `shaderpacks/` folder. Requires Iris Shaders.
+
+            ### Changelog
+            See commits for full changes.
+          files: ${{ env.ZIP_NAME }}
