@@ -1,23 +1,28 @@
 #version 120
 
-/* RENDERTARGETS: 3 */
+/* RENDERTARGETS: 3,4 */
 
 varying vec2 texcoord;
 
 uniform sampler2D colortex0;
 uniform sampler2D colortex1;
 uniform sampler2D colortex2;
+uniform sampler2D colortex4;
 uniform sampler2D depthtex0;
+uniform sampler2D depthtex1;
 uniform sampler2D shadowtex0;
 
 uniform mat4 gbufferProjection;
 uniform mat4 gbufferProjectionInverse;
 uniform mat4 gbufferModelView;
 uniform mat4 gbufferModelViewInverse;
+uniform mat4 gbufferPreviousProjection;
+uniform mat4 gbufferPreviousModelView;
 uniform mat4 shadowProjection;
 uniform mat4 shadowModelView;
 
 uniform vec3 cameraPosition;
+uniform vec3 previousCameraPosition;
 uniform float near;
 uniform float far;
 uniform float viewWidth;
@@ -25,11 +30,231 @@ uniform float viewHeight;
 uniform float timeAngle;
 uniform float sunPathRotation;
 uniform float rainStrength;
+uniform float frameTimeCounter;
 uniform int isEyeInWater;
 
 const float PI = 3.14159265359;
 
-#define MAT_SKY 6.0
+const float MAT_SKY = 6.0;
+
+vec3 toClipSpace3(vec3 viewPos) {
+    vec4 clip = gbufferProjection * vec4(viewPos, 1.0);
+    return clip.xyz / clip.w;
+}
+
+vec3 toScreenSpace(vec3 clipPos) {
+    return clipPos * 0.5 + 0.5;
+}
+
+vec3 toViewSpace(vec2 uv, float depth) {
+    vec4 clip = vec4(uv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+    vec4 view = gbufferProjectionInverse * clip;
+    return view.xyz / view.w;
+}
+
+float linZ(float depth) {
+    return (2.0 * near) / (far + near - depth * (far - near));
+}
+
+float interleavedGradientNoise(vec2 uv) {
+    const vec3 magic = vec3(0.06711056, 0.00583715, 52.9829189);
+    return fract(magic.z * fract(dot(uv, magic.xy)));
+}
+
+vec3 cosineHemisphereSample(vec2 Xi) {
+    float theta = 2.0 * PI * Xi.x;
+    float r = sqrt(Xi.y);
+    return vec3(cos(theta) * r, sin(theta) * r, sqrt(1.0 - Xi.y));
+}
+
+vec3 TangentToWorld(vec3 N, vec3 H) {
+    vec3 up = abs(N.y) < 0.999 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+    vec3 tangent = normalize(cross(up, N));
+    vec3 bitangent = cross(N, tangent);
+    return normalize(tangent * H.x + bitangent * H.y + N * H.z);
+}
+
+vec3 rayTrace_GI(vec3 dir, vec3 position, float dither, float quality) {
+    float maxDist = 32.0;
+    float t = min(maxDist, -position.z * 0.99 / max(dir.z, 0.001));
+    vec3 endPos = position + dir * t;
+
+    vec4 startClip = gbufferProjection * vec4(position, 1.0);
+    vec4 endClip = gbufferProjection * vec4(endPos, 1.0);
+    vec3 clipStart = startClip.xyz / startClip.w;
+    vec3 clipEnd = endClip.xyz / endClip.w;
+
+    vec2 screenStart = clipStart.xy * 0.5 + 0.5;
+    vec2 screenEnd = clipEnd.xy * 0.5 + 0.5;
+
+    vec2 deltaScreen = screenEnd - screenStart;
+    float depthStart = clipStart.z;
+    float depthEnd = clipEnd.z;
+    float deltaDepth = depthEnd - depthStart;
+
+    float steps = max(abs(deltaScreen.x) * viewWidth, abs(deltaScreen.y) * viewHeight);
+    steps = clamp(steps, 1.0, quality * 4.0);
+
+    vec2 stepScreen = deltaScreen / steps;
+    float stepDepth = deltaDepth / steps;
+
+    vec2 uv = screenStart + stepScreen * dither;
+    float clipDepth = depthStart + stepDepth * dither;
+
+    for (float i = 0.0; i < steps; i += 1.0) {
+        uv += stepScreen;
+        clipDepth += stepDepth;
+
+        if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
+            return vec3(1.1, 1.1, 1.1);
+        }
+
+        float sampledDepth = texture2D(depthtex1, uv).r;
+
+        float rayLin = linZ(clipDepth * 0.5 + 0.5);
+        float sampleLin = linZ(sampledDepth);
+
+        float depthDiff = rayLin - sampleLin;
+
+        if (depthDiff > 0.001 && depthDiff < t * 0.5) {
+            return vec3(uv, sampleLin);
+        }
+    }
+
+    return vec3(1.1, 1.1, 1.1);
+}
+
+vec3 RT_alternate(vec3 dir, vec3 position, float dither, float quality, out float CURVE) {
+    float maxDist = 32.0;
+    float t = min(maxDist, -position.z * 0.99 / max(dir.z, 0.001));
+    vec3 endPos = position + dir * t;
+
+    vec4 startClip = gbufferProjection * vec4(position, 1.0);
+    vec4 endClip = gbufferProjection * vec4(endPos, 1.0);
+    vec3 clipStart = startClip.xyz / startClip.w;
+    vec3 clipEnd = endClip.xyz / endClip.w;
+
+    vec2 screenStart = clipStart.xy * 0.5 + 0.5;
+    vec2 screenEnd = clipEnd.xy * 0.5 + 0.5;
+
+    vec2 deltaScreen = screenEnd - screenStart;
+    float depthStart = clipStart.z;
+    float depthEnd = clipEnd.z;
+    float deltaDepth = depthEnd - depthStart;
+
+    float coarseSteps = max(abs(deltaScreen.x) * viewWidth, abs(deltaScreen.y) * viewHeight) * 0.25;
+    coarseSteps = clamp(coarseSteps, 1.0, quality * 2.0);
+
+    vec2 stepScreen = deltaScreen / coarseSteps;
+    float stepDepth = deltaDepth / coarseSteps;
+
+    vec2 uv = screenStart + stepScreen * dither;
+    float clipDepth = depthStart + stepDepth * dither;
+
+    vec2 prevUv = screenStart;
+    float prevDepth = depthStart;
+
+    for (float i = 0.0; i < coarseSteps; i += 1.0) {
+        prevUv = uv;
+        prevDepth = clipDepth;
+
+        uv += stepScreen;
+        clipDepth += stepDepth;
+
+        if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
+            CURVE = 0.0;
+            return vec3(1.1, 1.1, 1.1);
+        }
+
+        float sampledDepth = texture2D(depthtex1, uv).r;
+
+        float rayLin = linZ(clipDepth * 0.5 + 0.5);
+        float sampleLin = linZ(sampledDepth);
+
+        float depthDiff = rayLin - sampleLin;
+
+        if (depthDiff > 0.0) {
+            vec2 lowUv = prevUv;
+            vec2 highUv = uv;
+            float lowDepth = prevDepth;
+            float highDepth = clipDepth;
+
+            for (float j = 0.0; j < 6.0; j += 1.0) {
+                vec2 midUv = (lowUv + highUv) * 0.5;
+                float midDepth = (lowDepth + highDepth) * 0.5;
+
+                float midLin = linZ(midDepth * 0.5 + 0.5);
+                float samLin = linZ(texture2D(depthtex1, midUv).r);
+
+                if (midLin > samLin) {
+                    highUv = midUv;
+                    highDepth = midDepth;
+                } else {
+                    lowUv = midUv;
+                    lowDepth = midDepth;
+                }
+            }
+
+            vec2 finalUv = (lowUv + highUv) * 0.5;
+            float finalDepth = texture2D(depthtex1, finalUv).r;
+            float finalLin = linZ(finalDepth);
+            CURVE = 1.0;
+            return vec3(finalUv, finalLin);
+        }
+    }
+
+    CURVE = 0.0;
+    return vec3(1.1, 1.1, 1.1);
+}
+
+vec3 getSkyColor(vec3 dir, float sunVisibility, vec3 sunVec) {
+    float NdotL = max(dot(dir, sunVec), 0.0);
+    vec3 sky = mix(vec3(0.02, 0.03, 0.06), vec3(0.1, 0.2, 0.4), sunVisibility);
+    vec3 sunColor = vec3(1.0, 0.7, 0.3) * pow(NdotL, 20.0) * 5.0 * sunVisibility;
+    vec3 horizon = mix(vec3(0.3, 0.4, 0.6), vec3(0.05, 0.05, 0.1), abs(dir.y));
+    return sky * horizon + sunColor;
+}
+
+vec3 computeSSRTGI(vec3 viewPos, vec3 normal, vec3 noise, vec2 texcoord,
+    float sunVisibility, vec3 sunVec, vec3 ambientCol, vec3 lightCol,
+    int rayCount, float rayIterations) {
+
+    vec3 radiance = vec3(0.0);
+
+    for (int i = 0; i < 16; i++) {
+        if (i >= rayCount) break;
+
+        float fi = float(i);
+
+        vec2 Xi = vec2(
+            fract(noise.x + fi * 0.618033988749895),
+            fract(noise.y + fi * 0.381966011250105)
+        );
+
+        vec3 localDir = cosineHemisphereSample(Xi);
+        vec3 dir = TangentToWorld(normal, localDir);
+
+        vec3 hit = rayTrace_GI(dir, viewPos, noise.z + fi * 0.1, rayIterations);
+
+        if (hit.x > 1.0) {
+            radiance += getSkyColor(dir, sunVisibility, sunVec);
+        } else {
+            vec2 hitUV = hit.xy;
+            vec3 hitAlbedo = texture2D(colortex0, hitUV).rgb;
+            float hitMat = texture2D(colortex0, hitUV).a;
+
+            if (hitMat >= MAT_SKY - 0.5) {
+                radiance += getSkyColor(dir, sunVisibility, sunVec);
+            } else {
+                radiance += hitAlbedo * (ambientCol + lightCol * 0.5);
+            }
+        }
+    }
+
+    radiance /= float(rayCount);
+    radiance *= 2.0;
+    return radiance;
+}
 
 vec3 getViewPos(vec2 uv, float depth) {
     vec4 clip = vec4(uv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
@@ -109,6 +334,7 @@ void main() {
 
     if (matFlag >= MAT_SKY - 0.5) {
         gl_FragData[0] = vec4(col0.rgb, 1.0);
+        gl_FragData[1] = vec4(0.0);
         return;
     }
 
@@ -128,7 +354,7 @@ void main() {
 
     vec3 sunVec = getSunVec();
     vec3 upVec = getUpVec();
-    vec3 lightDir = normalize(sunVec);
+    vec3 lightDir = sunVec;
 
     float sunVisibility = clamp((dot(sunVec, upVec) + 0.05) * 10.0, 0.0, 1.0);
 
@@ -190,5 +416,31 @@ void main() {
         color *= vec3(0.2, 0.4, 0.6);
     }
 
+    vec3 giResult = vec3(0.0);
+
+    vec3 prevWorldPos = worldPos + cameraPosition - previousCameraPosition;
+    vec4 prevClip = gbufferPreviousProjection * gbufferPreviousModelView * vec4(prevWorldPos, 1.0);
+    vec2 prevUv = prevClip.xy / prevClip.w * 0.5 + 0.5;
+
+    vec3 prevGI = texture2D(colortex4, prevUv).rgb;
+    float blend = 0.05;
+    if (any(lessThan(prevUv, vec2(0.0))) || any(greaterThan(prevUv, vec2(1.0)))) blend = 1.0;
+
+    vec2 noiseUV = texcoord * vec2(viewWidth, viewHeight) + fract(frameTimeCounter * 137.0);
+    vec3 noise = vec3(
+        interleavedGradientNoise(noiseUV),
+        interleavedGradientNoise(noiseUV + vec2(1.0, 0.0)),
+        interleavedGradientNoise(noiseUV + vec2(0.0, 1.0))
+    );
+
+    vec3 rawGI = computeSSRTGI(viewPos, normal, noise, texcoord,
+        sunVisibility, sunVec, ambientCol, lightCol,
+        4, 12.0);
+
+    giResult = mix(prevGI, rawGI, blend);
+
+    color += giResult * albedo * 0.3;
+
     gl_FragData[0] = vec4(color, 1.0);
+    gl_FragData[1] = vec4(giResult, 1.0);
 }

@@ -95,4 +95,16 @@ vec3 randomDir(inout uint seed) {
     return vec3(sin(phi) * cos(theta), sin(phi) * sin(theta), cos(phi));
 }
 
+vec2 r2_samples(uint frame) {
+    const float alpha = 0.7548776662466927;
+    float x = fract(0.5 + alpha * float(frame));
+    float y = fract(0.5 + alpha * alpha * float(frame));
+    return vec2(x, y);
+}
+
+float blueNoise(vec2 uv, float frame) {
+    vec3 magic = vec3(0.06711056, 0.00583715, 52.9829189);
+    return fract(magic.z * fract(dot(uv + frame * 0.001, magic.xy)));
+}
+
 #endif

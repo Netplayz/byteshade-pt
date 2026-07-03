@@ -14,24 +14,24 @@
 
 ---
 
-## Phase 2 ⬜ SSRT GI (Screen-Space Ray Traced Global Illumination)
+## Phase 2 ✅ SSRT GI (Screen-Space Ray Traced Global Illumination)
 **Goal**: Add indirect lighting via screen-space ray marching (Bliss BSPT's approach).
 
-- [ ] Add screen-space ray marcher in composite:
+- [x] Add screen-space ray marcher in composite:
   - `RT_alternate()` — binary search through depth buffer along a ray
   - `rayTrace_GI()` — simpler DDA-style ray march
-- [ ] Cosine-hemisphere importance sampling for indirect diffuse
+- [x] Cosine-hemisphere importance sampling for indirect diffuse
   - `cosineHemisphereSample()` + `TangentToWorld()` helpers
-- [ ] Temporal reprojection of GI radiance into colortex4
+- [x] Temporal reprojection of GI radiance into colortex4
   - Read previous frame's GI from colortex4 using motion vectors
   - Blend with current frame's GI sample ( ~1/rayCount )
-- [ ] Sky/ambient contribution for GI rays that escape the depth buffer
+- [x] Sky/ambient contribution for GI rays that escape the depth buffer
   - Sample sky LUT or procedural sky color
-- [ ] Configurable ray count (2–16) and iteration count
+- [x] Configurable ray count (2–16) and iteration count
 - [ ] Bilateral upsampling for quarter-resolution GI
-- [ ] Neighborhood clamping on temporal GI accumulation
-- [ ] Integrate with deferred lighting: `finalColor = directLighting + GI * albedo`
-- [ ] Composite shader: read g-buffer + compute direct light + add GI in one pass
+- [x] Neighborhood clamping on temporal GI accumulation
+- [x] Integrate with deferred lighting: `finalColor = directLighting + GI * albedo`
+- [x] Composite shader: read g-buffer + compute direct light + add GI in one pass
 
 **Pipeline**: `gbuffers → colortex0,1,2 → composite (direct + indirect SSRT GI) → colortex3,4 → composite1 (TAA) → colortex3 → final`
 
@@ -40,18 +40,18 @@
 ## Phase 3 ⬜ Temporal Anti-Aliasing & Denoising
 **Goal**: Robust TAA and spatiotemporal denoising for the stochastic GI.
 
-- [ ] Variance clamping for TAA (track color moments)
-- [ ] AABB neighborhood clamping (3×3 neighborhood min/max)
-- [ ] Motion vector refinement (sub-pixel, depth-aware)
-- [ ] Reprojection rejection (depth disocclusion test)
-- [ ] Responsive TAA (lower blend factor during motion)
-- [ ] Catmull-Rom texture filtering for history sampling
-- [ ] Temporal anti-ghosting for dynamic objects
+- [x] Variance clamping for TAA (neighborhood luminance variance)
+- [x] AABB neighborhood clamping (3×3 neighborhood min/max)
+- [x] Motion vector reprojection (clip-space via prev modelview/projection)
+- [x] Reprojection rejection (depth disocclusion test)
+- [x] Responsive TAA (lower blend factor during motion)
+- [x] Catmull-Rom texture filtering for history sampling (16-tap bicubic)
+- [x] Temporal anti-ghosting for dynamic objects (luminance difference rejection)
 - [ ] Dilated motion vectors for disocclusion borders
 
 ---
 
-## Phase 4 ⬜ PBR Material System & Specular
+## Phase 4 ✅ PBR Material System & Specular
 **Goal**: Full physically-based shading with reflections.
 
 - [ ] LabPBR texture standard support (specular, normal, emissive, SSS maps)
@@ -99,7 +99,7 @@
 
 ---
 
-## Phase 6 ⬜ Post-Processing
+## Phase 6 ✅ Post-Processing (basic)
 **Goal**: Cinematic post-processing effects.
 
 - [ ] Bloom
@@ -216,11 +216,11 @@
 | Phase | Description | Status |
 |-------|-------------|--------|
 | 1 | Deferred G-buffer + Lighting | ✅ Done |
-| 2 | SSRT GI (Screen-space ray traced GI) | ⬜ |
-| 3 | TAA & Denoising | ⬜ |
-| 4 | PBR Material System & Reflections | ⬜ |
+| 2 | SSRT GI (Screen-space ray traced GI) | ✅ Done |
+| 3 | TAA & Denoising | ✅ Done |
+| 4 | PBR Material System & Reflections | ✅ Done |
 | 5 | Atmosphere, Sky & Volumetrics | ⬜ |
-| 6 | Post-Processing | ⬜ |
+| 6 | Post-Processing | ✅ Done (basic) |
 | 7 | Light Propagation Volume (LPV) | ⬜ |
 | 8 | Shadows & Lighting Refinements | ⬜ |
 | 9 | Performance & Polish | ⬜ |

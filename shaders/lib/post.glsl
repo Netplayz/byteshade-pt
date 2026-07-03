@@ -1,6 +1,59 @@
 #ifndef POST_GLSL
 #define POST_GLSL
 
+// Tonemapping functions
+
+vec3 acesFilm(vec3 x) {
+    float a = 2.51;
+    float b = 0.03;
+    float c = 2.43;
+    float d = 0.59;
+    float e = 0.14;
+    return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
+}
+
+vec3 reinhardTonemap(vec3 c) {
+    return c / (c + vec3(1.0));
+}
+
+vec3 uncharted2Tonemap(vec3 c) {
+    float A = 0.15;
+    float B = 0.50;
+    float C = 0.10;
+    float D = 0.20;
+    float E = 0.02;
+    float F = 0.30;
+    vec3 nom = c * (A * c + C * B) + D * E;
+    vec3 denom = c * (A * c + B) + D * F;
+    return clamp((nom / denom) - E / F, 0.0, 1.0);
+}
+
+vec3 filmicTonemap(vec3 c) {
+    vec3 x = max(vec3(0.0), c - 0.004);
+    return (x * (6.2 * x + 0.5)) / (x * (6.2 * x + 1.7) + 0.06);
+}
+
+vec3 gammaCorrect(vec3 c, float gamma) {
+    return pow(c, vec3(1.0 / gamma));
+}
+
+// Color grading
+
+vec3 colorGradeLiftGammaGain(vec3 c, vec3 lift, vec3 gamma, vec3 gain) {
+    return pow(c * gain + lift, gamma);
+}
+
+float getLuminance(vec3 c) {
+    return dot(c, vec3(0.2126, 0.7152, 0.0722));
+}
+
+vec3 adjustSaturation(vec3 c, float saturation) {
+    float luma = getLuminance(c);
+    return mix(vec3(luma), c, saturation);
+}
+
+// Bloom
+
 vec3 bloomBlur(sampler2D tex, vec2 uv, vec2 pixelSize, float intensity, int radius) {
     vec3 color = texture2D(tex, uv).xyz * 0.227;
     int r = min(radius, 8);
