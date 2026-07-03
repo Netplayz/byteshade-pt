@@ -133,6 +133,18 @@ jobs:
         run: |
           gh release upload "${{ github.event.release.tag_name }}" byteshade-pt.zip --clobber
 
+      - name: Create automatic release on push to master
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="v1.0.0-build.${GITHUB_RUN_NUMBER}"
+          gh release create "$tag" byteshade-pt.zip \
+            --title "$tag" \
+            --notes "Automated build from commit $(echo "$GITHUB_SHA" | cut -c1-7)" \
+            --target "$GITHUB_SHA" 2>/dev/null || \
+          gh release upload "$tag" byteshade-pt.zip --clobber
+
   lint-glsl:
     runs-on: ubuntu-latest
     steps:
