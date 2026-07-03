@@ -47,7 +47,7 @@
 - [x] Responsive TAA (lower blend factor during motion)
 - [x] Catmull-Rom texture filtering for history sampling (16-tap bicubic)
 - [x] Temporal anti-ghosting for dynamic objects (luminance difference rejection)
-- [ ] Dilated motion vectors for disocclusion borders
+- [x] Dilated motion vectors for disocclusion borders (3×3 neighbor max velocity)
 
 ---
 

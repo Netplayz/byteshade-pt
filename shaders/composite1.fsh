@@ -96,34 +96,62 @@ vec3 catmullRomSample(sampler2D tex, vec2 uv, vec2 texSize) {
     return result;
 }
 
+bool inBounds(vec2 uv) {
+    return uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0;
+}
+
+bool depthConsistent(vec2 uv1, vec2 uv2, float threshold) {
+    float d1 = texture2D(depthtex0, uv1).r;
+    float d2 = texture2D(depthtex0, uv2).r;
+    return abs(linearizeDepth(d1, near, far) - linearizeDepth(d2, near, far)) < threshold;
+}
+
 void main() {
     vec2 uv = texcoord;
     float depth = texture2D(depthtex0, uv).r;
-
     vec3 currentColor = texture2D(colortex3, uv).rgb;
 
-    vec2 prevUv = getPrevUv(uv, depth);
-
-    if (prevUv.x < 0.0 || prevUv.x > 1.0 || prevUv.y < 0.0 || prevUv.y > 1.0) {
-        gl_FragData[0] = vec4(currentColor, 1.0);
-        gl_FragData[1] = vec4(currentColor, 1.0);
-        return;
-    }
-
-    float prevDepth = texture2D(depthtex0, prevUv).r;
-    float depthDiff = abs(linearizeDepth(prevDepth, near, far) - linearizeDepth(depth, near, far));
-    if (depthDiff > 0.1) {
-        gl_FragData[0] = vec4(currentColor, 1.0);
-        gl_FragData[1] = vec4(currentColor, 1.0);
-        return;
-    }
-
     vec2 texSize = vec2(viewWidth, viewHeight);
-    vec3 historyColor = catmullRomSample(colortex5, prevUv, texSize);
+    vec2 texelSize = 1.0 / texSize;
+
+    vec2 prevUv = getPrevUv(uv, depth);
+    bool ownValid = inBounds(prevUv) && depthConsistent(uv, prevUv, 0.1);
+
+    vec2 bestVel = ownValid ? uv - prevUv : vec2(0.0);
+    float bestVelLen = ownValid ? length(bestVel) : -1.0;
+    vec2 bestPrevUv = ownValid ? prevUv : uv;
+
+    for (int x = -1; x <= 1; x++) {
+        for (int y = -1; y <= 1; y++) {
+            vec2 nuv = uv + vec2(float(x), float(y)) * texelSize;
+            if (!inBounds(nuv)) continue;
+            float nd = texture2D(depthtex0, nuv).r;
+            vec2 nprev = getPrevUv(nuv, nd);
+            if (!inBounds(nprev)) continue;
+            if (!depthConsistent(nuv, nprev, 0.1)) continue;
+            vec2 nvel = nuv - nprev;
+            float nlen = length(nvel);
+            if (nlen > bestVelLen) {
+                bestVelLen = nlen;
+                bestVel = nvel;
+                bestPrevUv = nprev;
+            }
+        }
+    }
+
+    vec2 histUv = uv - bestVel;
+    bool histValid = inBounds(histUv);
+
+    if (!histValid) {
+        gl_FragData[0] = vec4(currentColor, 1.0);
+        gl_FragData[1] = vec4(currentColor, 1.0);
+        return;
+    }
+
+    vec3 historyColor = catmullRomSample(colortex5, histUv, texSize);
 
     vec3 minColor = currentColor;
     vec3 maxColor = currentColor;
-    vec2 texelSize = 1.0 / texSize;
 
     for (int x = -1; x <= 1; x++) {
         for (int y = -1; y <= 1; y++) {
@@ -160,11 +188,9 @@ void main() {
     scale = clamp(scale, 0.0, 1.0);
     historyColor *= scale;
 
-    vec2 velocity = uv - prevUv;
     float blend = 0.08;
-    float velLen = length(velocity);
-    if (velLen > 0.01) blend = 0.04;
-    if (depthDiff > 0.02) blend = 0.5;
+    if (bestVelLen > 0.01) blend = 0.04;
+    if (ownValid && !depthConsistent(uv, histUv, 0.02)) blend = 0.5;
 
     float ghostDiff = abs(histoLum - currLum) / max(currLum, 0.01);
     float ghostFactor = clamp(ghostDiff * 2.0, 0.0, 1.0);
