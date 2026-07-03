@@ -1,11 +1,11 @@
-#version 330 compatibility
+#version 120
 
-out vec2 texcoord;
-out vec2 lmcoord;
-out vec4 glcolor;
-out vec3 normal;
-out vec3 worldPos;
-out float vertexDistance;
+varying vec2 texcoord;
+varying vec2 lmcoord;
+varying vec4 glcolor;
+varying vec3 normal;
+varying vec3 worldPos;
+varying float vertexDistance;
 
 uniform mat4 gbufferModelViewInverse;
 uniform float frameTimeCounter;

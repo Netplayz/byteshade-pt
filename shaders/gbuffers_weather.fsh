@@ -1,10 +1,10 @@
-#version 330 compatibility
+#version 120
 
 /* RENDERTARGETS: 0,1,2,3,4 */
 
-in vec2 texcoord;
-in vec4 glcolor;
-in float vertexDistance;
+varying vec2 texcoord;
+varying vec4 glcolor;
+varying float vertexDistance;
 
 uniform float near;
 uniform float far;

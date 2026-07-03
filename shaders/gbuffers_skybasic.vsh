@@ -1,8 +1,8 @@
-#version 330 compatibility
+#version 120
 
-out vec2 texcoord;
-out vec4 glcolor;
-out vec3 normal;
+varying vec2 texcoord;
+varying vec4 glcolor;
+varying vec3 normal;
 
 void main() {
     gl_Position = ftransform();

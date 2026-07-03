@@ -1,10 +1,10 @@
-#version 330 compatibility
+#version 120
 
 /* RENDERTARGETS: 0 */
 
-in vec2 texcoord;
-in vec4 glcolor;
-in vec3 normal;
+varying vec2 texcoord;
+varying vec4 glcolor;
+varying vec3 normal;
 
 uniform sampler2D texture;
 

@@ -1,28 +1,18 @@
-#version 330 compatibility
+#version 120
 
-/* 1 */
-/* 2 */
-/* 3 */
-/* 4 */
-/* 5 */
-/* 6 */
-/* 7 */
-/* 8 */
-/* 9 */
-/* 10 */
-out vec2 texcoord;
-out vec2 lmcoord;
-out vec4 glcolor;
-out vec3 normal;
-out vec3 tangent;
-out vec3 worldPos;
-out float vertexDistance;
-out float blockID;
+varying vec2 texcoord;
+varying vec2 lmcoord;
+varying vec4 glcolor;
+varying vec3 normal;
+varying vec3 tangent;
+varying vec3 worldPos;
+varying float vertexDistance;
+varying float blockID;
 
 uniform mat4 gbufferModelViewInverse;
 uniform float frameTimeCounter;
 
-in vec4 mc_Entity;
+attribute vec4 mc_Entity;
 
 void main() {
     gl_Position = ftransform();

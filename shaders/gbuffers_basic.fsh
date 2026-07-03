@@ -1,13 +1,13 @@
-#version 330 compatibility
+#version 120
 
 /* RENDERTARGETS: 0,1,2,3,4 */
 
-in vec2 texcoord;
-in vec2 lmcoord;
-in vec4 glcolor;
-in vec3 normal;
-in vec3 worldPos;
-in float vertexDistance;
+varying vec2 texcoord;
+varying vec2 lmcoord;
+varying vec4 glcolor;
+varying vec3 normal;
+varying vec3 worldPos;
+varying float vertexDistance;
 
 uniform vec3 cameraPosition;
 uniform float near;

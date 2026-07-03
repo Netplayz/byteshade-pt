@@ -1,8 +1,8 @@
-#version 330 compatibility
+#version 120
 
 /* RENDERTARGETS: 0,5 */
 
-in vec2 texcoord;
+varying vec2 texcoord;
 
 uniform sampler2D colortex0;
 uniform sampler2D colortex5;
