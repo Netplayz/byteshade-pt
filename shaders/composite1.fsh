@@ -1,4 +1,4 @@
-#version 150 compatibility
+#version 330 compatibility
 
 /* RENDERTARGETS: 0,5 */
 
