@@ -46,14 +46,6 @@ void main() {
     vec2 uv = texcoord;
     vec2 ps = 1.0 / vec2(viewWidth, viewHeight);
 
-    // DEBUG OVERLAY: red checkers = shader is running
-    vec2 c = floor(uv * 32.0);
-    float p = mod(c.x + c.y, 2.0);
-    if (p > 0.5) {
-        gl_FragData[0] = vec4(1.0, 0.0, 0.0, 1.0);
-        return;
-    }
-
     vec3 hdr = texture2D(colortex0, uv).rgb;
 
     // Auto exposure
