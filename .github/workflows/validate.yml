@@ -8,6 +8,9 @@ on:
   release:
     types: [ published ]
 
+permissions:
+  contents: write
+
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -139,11 +142,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           tag="v1.0.0-build.${GITHUB_RUN_NUMBER}"
-          gh release create "$tag" byteshade-pt.zip \
-            --title "$tag" \
-            --notes "Automated build from commit $(echo "$GITHUB_SHA" | cut -c1-7)" \
-            --target "$GITHUB_SHA" 2>/dev/null || \
-          gh release upload "$tag" byteshade-pt.zip --clobber
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" byteshade-pt.zip --clobber
+          else
+            gh release create "$tag" byteshade-pt.zip \
+              --title "$tag" \
+              --notes "Automated build from commit ${GITHUB_SHA:0:7}" \
+              --target "$GITHUB_SHA"
+          fi
 
   lint-glsl:
     runs-on: ubuntu-latest
