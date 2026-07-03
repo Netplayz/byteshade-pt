@@ -12,7 +12,7 @@ out float blockID;
 uniform mat4 gbufferModelViewInverse;
 uniform float frameTimeCounter;
 
-attribute vec4 mc_Entity;
+in vec4 mc_Entity;
 
 void main() {
     gl_Position = ftransform();
