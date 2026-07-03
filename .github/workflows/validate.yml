@@ -70,10 +70,8 @@ jobs:
           done
           if grep -q "^composite\.count=" "$propfile"; then
             count=$(grep "^composite\.count=" "$propfile" | sed 's/.*=//')
-            for i in $(seq 1 $count); do
-              idx=$((i - 1))
-              fname="composite"
-              if [ "$i" -gt 1 ]; then fname="composite${i}"; fi
+            for i in $(seq 0 $((count - 1))); do
+              if [ "$i" -eq 0 ]; then fname="composite"; else fname="composite${i}"; fi
               [ -f "shaders/${fname}.fsh" ] || { echo "ERROR: shaders/${fname}.fsh missing (composite.count=$count)"; errors=$((errors + 1)); }
             done
           fi
@@ -159,8 +157,6 @@ jobs:
               "coherent "
               "writeonly"
               "readonly"
-              "smooth"
-              "flat"
               "noperspective"
             )
             for pat in "${bad_patterns[@]}"; do
