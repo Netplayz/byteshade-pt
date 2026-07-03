@@ -15,6 +15,16 @@ uniform sampler2D lightmap;
 uniform sampler2D specular;
 uniform sampler2D normals;
 
+mat3 cotangentFrame(vec3 N, vec3 p, vec2 uv) {
+    vec3 dp1 = dFdx(p);
+    vec3 dp2 = dFdy(p);
+    vec2 duv1 = dFdx(uv);
+    vec2 duv2 = dFdy(uv);
+    vec3 T = normalize(dp1 * duv2.y - dp2 * duv1.y);
+    vec3 B = normalize(cross(N, T));
+    return mat3(T, B, N);
+}
+
 void main() {
     vec4 albedo = texture2D(texture, texcoord) * glcolor;
     albedo.rgb = pow(albedo.rgb, vec3(2.2));
