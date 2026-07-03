@@ -1,5 +1,15 @@
 #version 330 compatibility
 
+/* 1 */
+/* 2 */
+/* 3 */
+/* 4 */
+/* 5 */
+/* 6 */
+/* 7 */
+/* 8 */
+/* 9 */
+/* 10 */
 out vec2 texcoord;
 out vec2 lmcoord;
 out vec4 glcolor;
