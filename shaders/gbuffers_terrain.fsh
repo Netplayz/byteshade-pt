@@ -100,15 +100,15 @@ void main() {
 
     float sunVisibility = clamp((dot(sunVec, upVec) + 0.05) * 10.0, 0.0, 1.0);
 
-    vec3 lightMorning = vec3(1.5, 0.6, 0.2) * 1.5;
-    vec3 lightDay     = vec3(1.0, 0.95, 0.9) * 3.0;
-    vec3 lightEvening = vec3(1.5, 0.6, 0.2) * 1.5;
-    vec3 lightNight   = vec3(0.6, 0.6, 1.2) * 0.08;
+    vec3 lightMorning = vec3(1.400, 0.582, 0.214);
+    vec3 lightDay     = vec3(1.076, 1.208, 1.400);
+    vec3 lightEvening = vec3(1.400, 0.582, 0.214);
+    vec3 lightNight   = vec3(0.033, 0.053, 0.140);
 
-    vec3 ambientMorning = vec3(0.4, 0.35, 0.3) * 0.4;
-    vec3 ambientDay     = vec3(0.4, 0.45, 0.7) * 0.6;
-    vec3 ambientEvening = vec3(0.4, 0.35, 0.3) * 0.4;
-    vec3 ambientNight   = vec3(0.3, 0.35, 0.6) * 0.1;
+    vec3 ambientMorning = vec3(0.349, 0.239, 0.282);
+    vec3 ambientDay     = vec3(0.275, 0.290, 0.435);
+    vec3 ambientEvening = vec3(0.349, 0.239, 0.282);
+    vec3 ambientNight   = vec3(0.029, 0.037, 0.087);
 
     float mefade = 1.0 - clamp(abs(timeAngle - 0.5) * 8.0 - 1.5, 0.0, 1.0);
     float timeBrightness = max(sin(timeAngle * 6.28318530718), 0.0);
@@ -117,8 +117,10 @@ void main() {
     vec3 lightSun = mix(mix(lightMorning, lightEvening, mefade), lightDay, dfade);
     vec3 ambientSun = mix(mix(ambientMorning, ambientEvening, mefade), ambientDay, dfade);
 
-    vec3 lightCol = mix(lightNight, lightSun, sunVisibility);
-    vec3 ambientCol = mix(ambientNight, ambientSun, sunVisibility);
+    vec3 lightColSqrt = mix(lightNight, lightSun, sunVisibility);
+    vec3 lightCol = lightColSqrt * lightColSqrt;
+    vec3 ambientColSqrt = mix(ambientNight, ambientSun, sunVisibility);
+    vec3 ambientCol = ambientColSqrt * ambientColSqrt;
 
     vec3 torchCol = vec3(1.0, 0.45, 0.08) * 4.0;
 
@@ -143,7 +145,7 @@ void main() {
     float newLightmap = pow(lm.x, 10.0) * 1.6 + lm.x * 0.6;
     vec3 blockLighting = torchCol * newLightmap * newLightmap;
 
-    vec3 color = albedo.rgb * (sceneLighting + blockLighting);
+    vec3 color = albedo.rgb * (sceneLighting + blockLighting + vec3(0.02));
 
     float roughness = 0.8;
     float metallic = 0.0;
@@ -152,9 +154,6 @@ void main() {
     float NdotV = max(dot(norm, viewDir), 0.001);
     float NdotH = max(dot(norm, H), 0.001);
     float VdotH = max(dot(viewDir, H), 0.001);
-
-    vec3 kD = vec3(1.0) - fresnelSchlick(NdotV, F0);
-    kD *= 1.0 - metallic;
 
     vec3 specular = fresnelSchlick(VdotH, F0) * distributionGGX(NdotH, roughness) * geometrySmith(norm, viewDir, lightDir, roughness) / (4.0 * NdotV * NdotL + 0.0001);
     color += specular * lightCol * NdotL * shadow * 0.5;

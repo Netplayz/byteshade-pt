@@ -43,15 +43,15 @@ void main() {
 
     float sunVisibility = clamp((dot(sunVec, upVec) + 0.05) * 10.0, 0.0, 1.0);
 
-    vec3 lightMorning = vec3(1.5, 0.6, 0.2) * 1.5;
-    vec3 lightDay     = vec3(1.0, 0.95, 0.9) * 3.0;
-    vec3 lightEvening = vec3(1.5, 0.6, 0.2) * 1.5;
-    vec3 lightNight   = vec3(0.6, 0.6, 1.2) * 0.08;
+    vec3 lightMorning = vec3(1.400, 0.582, 0.214);
+    vec3 lightDay     = vec3(1.076, 1.208, 1.400);
+    vec3 lightEvening = vec3(1.400, 0.582, 0.214);
+    vec3 lightNight   = vec3(0.033, 0.053, 0.140);
 
-    vec3 ambientMorning = vec3(0.4, 0.35, 0.3) * 0.4;
-    vec3 ambientDay     = vec3(0.4, 0.45, 0.7) * 0.6;
-    vec3 ambientEvening = vec3(0.4, 0.35, 0.3) * 0.4;
-    vec3 ambientNight   = vec3(0.3, 0.35, 0.6) * 0.1;
+    vec3 ambientMorning = vec3(0.349, 0.239, 0.282);
+    vec3 ambientDay     = vec3(0.275, 0.290, 0.435);
+    vec3 ambientEvening = vec3(0.349, 0.239, 0.282);
+    vec3 ambientNight   = vec3(0.029, 0.037, 0.087);
 
     float mefade = 1.0 - clamp(abs(timeAngle - 0.5) * 8.0 - 1.5, 0.0, 1.0);
     float timeBrightness = max(sin(timeAngle * 6.28318530718), 0.0);
@@ -60,12 +60,15 @@ void main() {
     vec3 lightSun = mix(mix(lightMorning, lightEvening, mefade), lightDay, dfade);
     vec3 ambientSun = mix(mix(ambientMorning, ambientEvening, mefade), ambientDay, dfade);
 
-    vec3 lightCol = mix(lightNight, lightSun, sunVisibility);
-    vec3 ambientCol = mix(ambientNight, ambientSun, sunVisibility);
+    vec3 lightColSqrt = mix(lightNight, lightSun, sunVisibility);
+    vec3 lightCol = lightColSqrt * lightColSqrt;
+    vec3 ambientColSqrt = mix(ambientNight, ambientSun, sunVisibility);
+    vec3 ambientCol = ambientColSqrt * ambientColSqrt;
+    
 
     vec3 torchCol = vec3(1.0, 0.45, 0.08) * 4.0;
 
-    vec3 sceneLighting = mix(ambientCol * lm.y, lightCol, 1.0);
+    vec3 sceneLighting = mix(ambientCol * lm.y, lightCol, lm.y * 0.7);
     sceneLighting *= lm.y * lm.y;
 
     float newLightmap = pow(lm.x, 10.0) * 1.6 + lm.x * 0.6;
