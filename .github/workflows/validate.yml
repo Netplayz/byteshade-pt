@@ -5,6 +5,8 @@ on:
     branches: [ master ]
   pull_request:
     branches: [ master ]
+  release:
+    types: [ published ]
 
 jobs:
   validate:
@@ -123,6 +125,13 @@ jobs:
         with:
           name: byteshade-pt
           path: byteshade-pt.zip
+
+      - name: Upload to release
+        if: github.event_name == 'release'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" byteshade-pt.zip --clobber
 
   lint-glsl:
     runs-on: ubuntu-latest
