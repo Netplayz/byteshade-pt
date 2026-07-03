@@ -19,8 +19,7 @@ jobs:
         run: |
           TAG="${GITHUB_REF_NAME}"
           ZIP_NAME="Byteshade_PT_${TAG}.zip"
-          cd shaders
-          zip -r "../${ZIP_NAME}" .
+          zip -r "${ZIP_NAME}" shaders/
           echo "ZIP_NAME=${ZIP_NAME}" >> $GITHUB_ENV
 
       - name: Create Release
