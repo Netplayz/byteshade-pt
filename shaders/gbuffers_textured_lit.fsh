@@ -33,7 +33,7 @@ void main() {
         sss = 0.0;
     }
 
-    gl_FragData[0] = vec4(albedo.rgb, 7.0);
+    gl_FragData[0] = vec4(albedo.rgb, 3.0);
     vec2 enc = norm.z >= 0.0 ? norm.xy : (1.0 - abs(norm.yx)) * (sign(norm.xy) * -2.0 + 1.0);
     gl_FragData[1] = vec4(enc * 0.5 + 0.5, lm.x, lm.y);
     gl_FragData[2] = vec4(roughness, metallic, sss, emission);

@@ -339,8 +339,8 @@ vec3 getSkyColor(vec3 dir, float sunVisibility, vec3 sunVec) {
     float g = 0.76;
     float mie = (1.0 - g * g) / (4.0 * PI * pow(1.0 + g * g - 2.0 * g * cosTheta, 1.5));
 
-    vec3 rayleighCol = vec3(0.65, 0.55, 0.45) * rayleigh * 0.8;
-    vec3 mieCol = vec3(0.80, 0.68, 0.52) * mie * 3.0;
+    vec3 rayleighCol = vec3(0.25, 0.45, 0.90) * rayleigh * 0.8;
+    vec3 mieCol = vec3(0.90, 0.85, 0.80) * mie * 3.0;
 
     float horizon = 1.0 - height;
     float horizonBright = 1.0 - horizon * horizon * 0.7;
@@ -530,7 +530,7 @@ void main() {
     vec3 ambientNight   = vec3(0.029, 0.037, 0.087);
 
     float mefade = 1.0 - clamp(abs(timeAngle - 0.5) * 8.0 - 1.5, 0.0, 1.0);
-    float timeBrightness = max(sin(timeAngle * 6.28318530718), 0.0);
+    float timeBrightness = max(-cos(timeAngle * 6.28318530718), 0.0);
     float dfade = 1.0 - pow(1.0 - timeBrightness, 1.5);
 
     vec3 lightSun = mix(mix(lightMorning, lightEvening, mefade), lightDay, dfade);
