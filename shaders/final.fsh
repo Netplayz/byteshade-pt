@@ -6,8 +6,6 @@ varying vec2 texcoord;
 
 uniform sampler2D colortex0;
 
-uniform float viewWidth;
-uniform float viewHeight;
 uniform float frameTimeCounter;
 
 vec3 acesFilm(vec3 x) {
@@ -20,15 +18,10 @@ vec3 acesFilm(vec3 x) {
 }
 
 void main() {
-    vec2 uv = texcoord;
-    vec3 color = texture2D(colortex0, uv).rgb;
-
+    vec3 color = texture2D(colortex0, texcoord).rgb;
     color = acesFilm(color);
-
-    float grain = fract(sin(dot(uv + frameTimeCounter * 0.001, vec2(12.9898, 78.233))) * 43758.5453);
-    color += (grain - 0.5) * 0.01;
-
+    float grain = fract(sin(dot(texcoord + frameTimeCounter * 0.001, vec2(12.9898, 78.233))) * 43758.5453);
+    color += (grain - 0.5) * 0.008;
     color = pow(color, vec3(1.0 / 2.2));
-
     gl_FragData[0] = vec4(color, 1.0);
 }
