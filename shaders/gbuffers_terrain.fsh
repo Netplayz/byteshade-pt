@@ -73,7 +73,7 @@ float sampleShadow(vec3 shadowPos) {
     if (shadowPos.x < 0.0 || shadowPos.x > 1.0 || shadowPos.y < 0.0 || shadowPos.y > 1.0 || shadowPos.z < 0.0 || shadowPos.z > 1.0) return 1.0;
     float bias = 0.002;
     float vis = 0.0;
-    vec2 texelSize = 1.0 / vec2(textureSize(shadowtex0, 0));
+    vec2 texelSize = 1.0 / vec2(2048.0);
     for (int x = -1; x <= 1; x++) {
         for (int y = -1; y <= 1; y++) {
             vec2 off = vec2(float(x), float(y)) * texelSize;
