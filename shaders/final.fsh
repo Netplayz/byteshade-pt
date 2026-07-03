@@ -42,23 +42,19 @@ vec3 bloomPass(sampler2D tex, vec2 uv, vec2 ps) {
     return max(col - 0.3, 0.0) * 0.5;
 }
 
-vec3 debugCheckers(vec2 uv) {
-    vec2 c = floor(uv * 16.0);
-    float p = mod(c.x + c.y, 2.0);
-    return mix(vec3(1.0, 0.0, 0.0), vec3(0.0, 0.0, 0.0), p);
-}
-
 void main() {
     vec2 uv = texcoord;
     vec2 ps = 1.0 / vec2(viewWidth, viewHeight);
 
-    vec3 hdr = texture2D(colortex0, uv).rgb;
-
-    // DEBUG: tint if HDR exceeds vanilla range
-    if (any(greaterThan(hdr, vec3(1.01)))) {
+    // DEBUG OVERLAY: red checkers = shader is running
+    vec2 c = floor(uv * 32.0);
+    float p = mod(c.x + c.y, 2.0);
+    if (p > 0.5) {
         gl_FragData[0] = vec4(1.0, 0.0, 0.0, 1.0);
         return;
     }
+
+    vec3 hdr = texture2D(colortex0, uv).rgb;
 
     // Auto exposure
     float avgLum = 0.0;
