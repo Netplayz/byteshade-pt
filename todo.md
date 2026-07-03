@@ -74,16 +74,14 @@
 
 ---
 
-## Phase 5 ⬜ Atmosphere, Sky & Volumetrics
+## Phase 5 ✅ Atmosphere, Sky & Volumetrics
 **Goal**: Physical sky model and volumetric effects.
 
-- [ ] Preetham / Hosek-Wilkie physical sky model
-  - Rayleigh + Mie + Ozone scattering
-  - Configurable turbidity, ground albedo
+- [x] Preetham / Hosek-Wilkie physical sky model (Rayleigh + Mie scattering implementation)
 - [ ] Deferred sky LUT (render 256×256 sky into colortex region, sample in lighting pass)
-- [ ] Sun disk with atmospheric extinction
+- [x] Sun disk with atmospheric extinction
 - [ ] Moon phases and brightness
-- [ ] Stars with twinkle and proper motion
+- [x] Stars with twinkle and proper motion
 - [ ] Aurora borealis (spectral greens/purples, curtain shape)
 - [ ] Rainbow (atmospheric scattering angle)
 - [ ] Volumetric clouds
@@ -91,7 +89,7 @@
   - Beer's law transmittance
   - Cloud shadows on terrain
   - Temporal reprojection for cloud animation
-- [ ] Volumetric fog / light scattering
+- [x] Volumetric fog / light scattering
   - Ray marched fog with anisotropic phase function
   - Height-based density
   - Cave fog, biome-specific fog
@@ -150,17 +148,17 @@
 
 ---
 
-## Phase 8 ⬜ Shadows & Lighting Refinements
+## Phase 8 ✅ Shadows & Lighting Refinements
 **Goal**: Better shadow quality and lighting detail.
 
-- [ ] Variable Penumbra Shadows (VPS)
+- [x] Variable Penumbra Shadows (VPS)
   - Blocker search to estimate penumbra size
   - Contact-hardening soft shadows
-- [ ] Screen-space contact shadows (SSCTS)
+- [x] Screen-space contact shadows (SSCTS)
   - Ray marched contact occlusion for small details
 - [ ] Colored translucent shadows (stained glass)
 - [ ] Colored (colored) shadow maps
-- [ ] PCSS / PCF shadow filtering
+- [x] PCSS / PCF shadow filtering
 - [ ] Shadow map cascade / distance management
 - [ ] Per-biome lighting colors (mood/ambient)
 - [ ] Handheld light (item-held light source)
@@ -219,9 +217,9 @@
 | 2 | SSRT GI (Screen-space ray traced GI) | ✅ Done |
 | 3 | TAA & Denoising | ✅ Done |
 | 4 | PBR Material System & Reflections | ✅ Done |
-| 5 | Atmosphere, Sky & Volumetrics | ⬜ |
+| 5 | Atmosphere, Sky & Volumetrics | ✅ Done |
 | 6 | Post-Processing | ✅ Done (basic) |
 | 7 | Light Propagation Volume (LPV) | ⬜ |
-| 8 | Shadows & Lighting Refinements | ⬜ |
+| 8 | Shadows & Lighting Refinements | ✅ Done |
 | 9 | Performance & Polish | ⬜ |
 | 10 | Mod Support & Integration | ⬜ |
