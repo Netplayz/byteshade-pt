@@ -39,11 +39,14 @@ void main() {
     float depth = gl_FragCoord.z;
     float linDepth = linearizeDepth(depth, near, far);
 
-    vec4 lightColor = texture2D(lightmap, lmcoord);
+    vec2 lm = texture2D(lightmap, lmcoord).rg;
+    vec3 torchColor = vec3(1.0, 0.5, 0.08) * lm.r;
+    vec3 skyColor = vec3(1.0, 0.9, 0.85) * lm.g;
+    vec3 lightColor = torchColor + skyColor;
 
-    gl_FragData[0] = vec4(albedo.rgb * max(lightColor.rgb, vec3(0.1)), roughness);
+    gl_FragData[0] = vec4(albedo.rgb, roughness);
     gl_FragData[1] = vec4(enc, metallic);
     gl_FragData[2] = vec4(emission, specular, 0.0, 1.0);
-    gl_FragData[3] = vec4(linDepth, lightColor.gba);
+    gl_FragData[3] = vec4(linDepth, lm.g, lightColor.rg);
     gl_FragData[4] = vec4(0.0);
 }
