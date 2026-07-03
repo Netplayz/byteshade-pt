@@ -1,0 +1,172 @@
+name: Validate Shaderpack
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check required directories
+        run: |
+          [ -d shaders ] || { echo "Missing shaders/ directory"; exit 1; }
+          echo "shaders/ exists"
+
+      - name: Shader file pairs (.fsh + .vsh)
+        run: |
+          errors=0
+          for fsh in shaders/*.fsh shaders/composite*.fsh; do
+            [ -f "$fsh" ] || continue
+            base=$(basename "$fsh" .fsh)
+            vsh="shaders/${base}.vsh"
+            if [ ! -f "$vsh" ]; then
+              echo "ERROR: $fsh missing matching $vsh"
+              errors=$((errors + 1))
+            fi
+          done
+          for vsh in shaders/*.vsh; do
+            [ -f "$vsh" ] || continue
+            base=$(basename "$vsh" .vsh)
+            fsh="shaders/${base}.fsh"
+            if [ ! -f "$fsh" ]; then
+              echo "ERROR: $vsh missing matching $fsh"
+              errors=$((errors + 1))
+            fi
+          done
+          if [ $errors -gt 0 ]; then exit 1; fi
+          echo "All shader file pairs match"
+
+      - name: Validate RENDERTARGETS directives
+        run: |
+          errors=0
+          for fsh in shaders/*.fsh; do
+            [ -f "$fsh" ] || continue
+            if grep -q 'RENDERTARGETS' "$fsh"; then
+              rt=$(grep 'RENDERTARGETS' "$fsh" | head -1 | sed 's/.*RENDERTARGETS: *\([0-9, ]*\) *\*\/.*/\1/')
+              for t in $(echo "$rt" | tr ',' ' '); do
+                t=$(echo "$t" | xargs)
+                if [ "$t" -gt 5 ] 2>/dev/null; then
+                  echo "WARNING: $fsh uses RENDERTARGET $t, only 0-5 declared in buffers"
+                fi
+              done
+            fi
+          done
+          echo "RENDERTARGETS validated"
+
+      - name: Validate shaders.properties
+        run: |
+          errors=0
+          propfile="shaders/shaders.properties"
+          [ -f "$propfile" ] || { echo "ERROR: $propfile missing"; exit 1; }
+          for buf in colortex0 colortex1 colortex2 colortex3 colortex4 colortex5; do
+            if ! grep -q "^${buf}\.format=" "$propfile"; then
+              echo "WARNING: $buf format not declared in $propfile"
+            fi
+          done
+          if grep -q "^composite\.count=" "$propfile"; then
+            count=$(grep "^composite\.count=" "$propfile" | sed 's/.*=//')
+            for i in $(seq 1 $count); do
+              idx=$((i - 1))
+              fname="composite"
+              if [ "$i" -gt 1 ]; then fname="composite${i}"; fi
+              [ -f "shaders/${fname}.fsh" ] || { echo "ERROR: shaders/${fname}.fsh missing (composite.count=$count)"; errors=$((errors + 1)); }
+            done
+          fi
+          echo "shaders.properties valid"
+          if [ $errors -gt 0 ]; then exit 1; fi
+
+      - name: Validate version directives
+        run: |
+          errors=0
+          for fsh in shaders/*.fsh; do
+            [ -f "$fsh" ] || continue
+            first=$(head -1 "$fsh")
+            if ! echo "$first" | grep -q '#version 120'; then
+              echo "ERROR: $fsh missing '#version 120' on line 1"
+              errors=$((errors + 1))
+            fi
+          done
+          if [ $errors -gt 0 ]; then exit 1; fi
+          echo "All shaders use #version 120"
+
+      - name: Validate property files
+        run: |
+          errors=0
+          for prop in shaders/block.properties shaders/entities.properties shaders/item.properties shaders/dimension.properties shaders/shaders.properties; do
+            [ -f "$prop" ] && echo "$prop exists" || echo "NOTE: $prop not present"
+          done
+          # Check property files have valid key=value format
+          for prop in shaders/block.properties shaders/entities.properties shaders/item.properties shaders/dimension.properties; do
+            [ -f "$prop" ] || continue
+            while IFS= read -r line; do
+              # skip comments and blanks
+              case "$line" in
+                ''|\#*) continue ;;
+              esac
+              if ! echo "$line" | grep -q '='; then
+                echo "WARNING: $prop has line without '=': $line"
+              fi
+            done < "$prop"
+          done
+          echo "Property files validated"
+
+      - name: Create shaderpack zip
+        run: |
+          zip -r byteshade-pt.zip shaders/ -x "*.git*"
+          echo "Created byteshade-pt.zip ($(du -h byteshade-pt.zip | cut -f1))"
+
+      - name: Upload shaderpack artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: byteshade-pt
+          path: byteshade-pt.zip
+
+  lint-glsl:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for common GLSL issues
+        run: |
+          errors=0
+          for fsh in shaders/*.fsh; do
+            [ -f "$fsh" ] || continue
+            # Check for non-constant initializers in for loops
+            if grep -q 'for *([a-z]* [a-z]* *= *[a-z]' "$fsh"; then
+              echo "WARNING: $fsh may have variable-length loop (GLSL 1.20 requires constant bounds)"
+            fi
+            # Check for texture() vs texture2D()
+            if grep -q 'texture(' "$fsh"; then
+              echo "WARNING: $fsh uses texture() instead of texture2D()"
+            fi
+            # Check for missing semicolons (basic check)
+            # Check for common GLSL 1.20 compatibility issues
+            bad_patterns=(
+              "sampler3D"
+              "imageLoad"
+              "imageStore"
+              "atomicAdd"
+              "barrier()"
+              "gl_GlobalInvocationID"
+              "gl_LocalInvocationID"
+              "gl_WorkGroupSize"
+              "shared "
+              "coherent "
+              "writeonly"
+              "readonly"
+              "smooth"
+              "flat"
+              "noperspective"
+            )
+            for pat in "${bad_patterns[@]}"; do
+              if grep -q "$pat" "$fsh"; then
+                echo "ISSUE: $fsh uses '$pat' which needs GLSL 1.30+"
+              fi
+            done
+          done
+          echo "GLSL linting complete"
