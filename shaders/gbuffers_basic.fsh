@@ -14,6 +14,7 @@ uniform float near;
 uniform float far;
 
 uniform sampler2D texture;
+uniform sampler2D lightmap;
 
 float linearizeDepth(float depth, float n, float f) {
     return (2.0 * n) / (f + n - depth * (f - n));

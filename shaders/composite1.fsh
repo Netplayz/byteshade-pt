@@ -49,6 +49,13 @@ void main() {
     vec2 uv = texcoord;
     float depth = texture2D(depthtex0, uv).r;
     float linDepth = linearizeDepth(depth, near, far);
+    float farLin = linearizeDepth(1.0, near, far);
+    if (linDepth > farLin * 0.98) {
+        vec3 skyColor = texture2D(colortex0, uv).rgb;
+        gl_FragData[0] = vec4(skyColor, 1.0);
+        gl_FragData[1] = vec4(skyColor, 1.0);
+        return;
+    }
 
     vec3 currentColor = texture2D(colortex0, uv).rgb;
     vec3 normalEnc = texture2D(colortex1, uv).rgb;

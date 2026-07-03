@@ -12,6 +12,7 @@ in float vertexDistance;
 uniform float near;
 uniform float far;
 uniform sampler2D texture;
+uniform sampler2D lightmap;
 
 float linearizeDepth(float d, float n, float f) {
     return (2.0 * n) / (f + n - d * (f - n));
@@ -33,6 +34,7 @@ void main() {
     gl_FragData[0] = vec4(albedo.rgb, 0.8);
     gl_FragData[1] = vec4(enc, 0.0);
     gl_FragData[2] = vec4(0.0, 0.1, 0.0, 0.0);
-    gl_FragData[3] = vec4(linDepth, lmcoord.x, lmcoord.y, 1.0);
+        vec3 lightColor = texture2D(lightmap, lmcoord).rgb;
+    gl_FragData[3] = vec4(linDepth, lightColor);
     gl_FragData[4] = vec4(0.0);
 }

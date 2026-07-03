@@ -244,39 +244,45 @@ void main() {
     vec2 uv = texcoord;
     float depth = texture2D(depthtex0, uv).r;
     float linDepth = linearizeDepth(depth, near, far);
+    float farLin = linearizeDepth(1.0, near, far);
+    bool isSky = linDepth > farLin * 0.98;
+
+    vec3 sunDir = normalize(sunPosition);
+    vec3 worldViewDir = normalize((gbufferModelViewInverse * vec4(normalize(getViewPos(uv, 1.0)), 0.0)).xyz);
+    vec3 skyRad = getSkyRadiance(worldViewDir, sunDir);
+
+    if (isSky) {
+        gl_FragData[0] = vec4(skyRad, 1.0);
+        gl_FragData[1] = vec4(skyRad, 1.0);
+        return;
+    }
 
     vec4 c0 = texture2D(colortex0, uv);
     vec4 c1 = texture2D(colortex1, uv);
     vec4 c2 = texture2D(colortex2, uv);
     vec4 c3 = texture2D(colortex3, uv);
-    vec4 c4 = texture2D(colortex4, uv);
 
     vec3 albedo = c0.rgb;
-    float roughness = c0.a;
-    vec3 normEnc = c1.rgb;
+    float roughness = max(c0.a, 0.001);
     float metallic = c1.a;
     float emission = c2.r;
     float specular = c2.g;
     float flags = c2.b;
-    float skyLight = c3.g;
-    float blockLight = c3.b;
-    float ao = c3.a;
+    vec3 lightColor = max(c3.gba, vec3(0.001));
 
-    vec3 normal = decodeNormal(normEnc.rg);
+    vec3 normal = decodeNormal(c1.rg);
     vec3 viewPos = getViewPos(uv, depth);
     vec3 worldPos = getWorldPos(uv, depth);
     vec3 viewDir = normalize(-viewPos);
 
-    vec3 sunDir = normalize(sunPosition);
     vec3 lightDir = sunDir;
     vec3 F0 = mix(vec3(0.04), albedo, metallic);
-    float NdotV = max(dot(normal, viewDir), 0.0);
+    float NdotV = max(dot(normal, viewDir), 0.001);
 
-    // Direct lighting
     float NdotL = max(dot(normal, lightDir), 0.0);
     vec3 H = normalize(viewDir + lightDir);
-    float NdotH = max(dot(normal, H), 0.0);
-    float VdotH = max(dot(viewDir, H), 0.0);
+    float NdotH = max(dot(normal, H), 0.001);
+    float VdotH = max(dot(viewDir, H), 0.001);
 
     vec3 shadowPos = getShadowMapPos(worldPos);
     float shadow = sampleShadow(shadowtex0, shadowPos);
@@ -288,33 +294,19 @@ void main() {
     vec3 directSpecular = fresnelSchlick(VdotH, F0) * distributionGGX(NdotH, roughness) * geometrySmith(normal, viewDir, lightDir, roughness) / (4.0 * NdotV * NdotL + 0.0001);
     vec3 directLight = (directDiffuse + directSpecular) * NdotL * shadow;
 
-    // Lightmap based ambient
-    float sunHeight = sunDir.y;
-    float dayFactor = smoothstep(-0.1, 0.2, sunHeight);
-    vec3 skyLightColor = mix(vec3(0.05, 0.05, 0.08), vec3(0.4, 0.6, 0.9), dayFactor);
-    vec3 blockLightColor = vec3(1.0, 0.7, 0.4);
-    vec3 ambientLight = skyLightColor * skyLight * 0.5 + blockLightColor * blockLight * 0.8;
-
-    vec3 skyRadiance = vec3(0.0);
-    vec3 worldViewDir = normalize((gbufferModelViewInverse * vec4(viewDir, 0.0)).xyz);
-    if (linDepth > 0.99 * linearizeDepth(far, near, far)) {
-        skyRadiance = getSkyRadiance(worldViewDir, sunDir);
-    }
+    vec3 ambientLight = lightColor;
 
     // Screen-space reflections
     vec3 ssr = vec3(0.0);
     float fresnel = pow(1.0 - NdotV, 5.0);
     float reflectivity = mix(fresnel, 1.0, metallic) * specular;
-    if (reflectivity > 0.01 && linDepth < 0.95 * linearizeDepth(far, near, far)) {
+    vec2 screenSize = vec2(viewWidth, viewHeight);
+    if (reflectivity > 0.01) {
         vec3 reflectDir = reflect(viewDir, normal);
         vec3 hitUVZ;
-        vec2 screenSize = vec2(viewWidth, viewHeight);
         float maxReflDist = mix(2.0, 16.0, 1.0 - roughness);
         if (rayMarchScreen(viewPos, reflectDir, maxReflDist, hitUVZ, screenSize, depthtex0)) {
-            vec2 hitUV = hitUVZ.xy;
-            ssr = texture2D(colortex0, hitUV).rgb;
-            float hitDepth = texture2D(depthtex0, hitUV).r;
-            float hitLin = linearizeDepth(hitDepth, near, far);
+            ssr = texture2D(colortex0, hitUVZ.xy).rgb;
             float distFade = smoothstep(maxReflDist, 0.0, hitUVZ.z);
             ssr *= distFade * reflectivity;
         } else {
@@ -323,41 +315,24 @@ void main() {
         }
     }
 
-    // Indirect lighting (GI)
-    vec2 screenSize = vec2(viewWidth, viewHeight);
     vec3 indirect = getIndirectLight(viewPos, normal, albedo, roughness, screenSize, depthtex0);
 
-    // Combine
-    vec3 color = directLight + ambientLight * albedo * ao + indirect * (1.0 - metallic);
-
-    // SSR on top
-    color = mix(color, ssr, reflectivity);
-
-    // Emission
+    vec3 color = directLight + ambientLight * albedo + indirect;
+    color = mix(color, ssr, reflectivity * 0.5);
     color += emission * albedo * 5.0;
 
-    // Fog
     float fogDist = length(viewPos);
-    float fogFactor = 1.0 - exp(-fogDist * 0.008 * (1.0 + rainStrength * 2.0));
-    vec3 fogCol = mix(skyColor, vec3(0.5, 0.5, 0.5), rainStrength * 0.5);
-    color = mix(color, fogCol, fogFactor);
+    float fogFactor = 1.0 - exp(-fogDist * 0.006);
+    color = mix(color, skyRad, fogFactor);
 
-    // Water tint
     if (isEyeInWater == 1) {
         float waterDepth = linDepth * far;
-        vec3 waterColor = vec3(0.1, 0.3, 0.4);
-        color = mix(color, waterColor, 1.0 - exp(-waterDepth * 2.0));
+        color = mix(color, vec3(0.1, 0.3, 0.4), 1.0 - exp(-waterDepth * 2.0));
     } else if (flags > 1.5 && flags < 2.5) {
         color = mix(color, vec3(0.2, 0.5, 0.6), 0.3);
     }
 
     color = max(color, vec3(0.0));
-
-    // Motion vector for temporal accumulation
-    vec3 previousWorldPos = getWorldPos(uv, depth) - cameraPosition + previousCameraPosition;
-    vec4 previousClip = gbufferPreviousProjection * gbufferPreviousModelView * vec4(previousWorldPos, 1.0);
-    vec2 previousUv = previousClip.xy / previousClip.w * 0.5 + 0.5;
-    vec2 velocity = (uv - previousUv);
 
     gl_FragData[0] = vec4(color, 1.0);
     gl_FragData[1] = vec4(color, 1.0);
