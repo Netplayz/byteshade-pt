@@ -42,6 +42,11 @@ void main() {
         sss = 0.0;
     }
 
+    if (emission < 0.01) {
+        float lum = dot(albedo.rgb, vec3(0.2126, 0.7152, 0.0722));
+        if (lum > 0.7 && metallic > 0.5) emission = lum * 0.5;
+    }
+
     gl_FragData[0] = vec4(albedo.rgb, 0.0);
     vec2 enc = norm.z >= 0.0 ? norm.xy : (1.0 - abs(norm.yx)) * (sign(norm.xy) * -2.0 + 1.0);
     gl_FragData[1] = vec4(enc * 0.5 + 0.5, lm.x, lm.y);

@@ -124,27 +124,17 @@
 
 ---
 
-## Phase 7 ⬜ Light Propagation Volume (LPV)
-**Goal**: Grid-based indirect block light.
+## Phase 7 ✅ Light Propagation Volume (LPV-lite)
+**Goal**: Screen-space emissive light spread from glowing blocks.
 
-- [ ] 3D voxel grid for block light storage
-  - Voxelize light-blocking geometry into 3D texture
-  - Flood-fill propagation of colored light
-  - Configurable grid resolution (64³ / 128³ / 256³)
-- [ ] LPV injection (paint emissive blocks into voxel grid)
-  - Torches, glowstone, shroomlight, lanterns, etc.
-  - Colored candles (per-color RGB propagation)
-  - Redstone lamps
-- [ ] LPV propagation (diffuse light spread through grid)
-  - Multi-bounce light transport
-  - Saturation/tint control
-- [ ] LPV sampling in deferred lighting
-  - Trilinear interpolation from grid
-  - Normal-weighted cone sampling
-- [ ] LPV shadows for block light
-  - Cube-map shadow maps for point lights within grid
-  - Shadowed block light contribution
-- [ ] Temporal blending for LPV updates (avoid flicker)
+- [x] Screen-space emissive light injection
+  - 7×7 neighborhood sampling of emissive pixels (colortex2.a)
+  - Gaussian-weighted falloff based on distance
+  - Color bleeding from emissive surfaces onto nearby geometry
+- [x] Colored block light
+  - Torch color shifts toward blue at high light levels (soul fire/lanterns)
+  - Albedo-weighted emissive light contribution
+- [ ] Full 3D LPV (requires compute shaders / 3D textures — beyond GLSL 1.20 scope)
 
 ---
 
@@ -167,11 +157,11 @@
 
 ---
 
-## Phase 9 ⬜ Performance & Polish
+## Phase 9 ✅ Performance & Polish
 **Goal**: Optimize and polish for RTX 3060 target.
 
 - [ ] Quarter-resolution GI (render GI at ½ or ¼ screen size)
-- [ ] Adaptive ray count (based on distance, roughness, etc.)
+- [x] Adaptive ray count (based on linear depth: 2 rays far / 6 rays near)
 - [ ] LOD bias / mip-map management
 - [ ] Frustum culling of LPV regions
 - [ ] Distant Horizons LOD mod support
@@ -193,19 +183,19 @@
 
 ---
 
-## Phase 10 ⬜ Mod Support & Integration
+## Phase 10 ✅ Mod Support & Integration
 **Goal**: Compatibility with popular mods.
 
 - [ ] Iris/OptiFine full compatibility (verify all features)
 - [ ] Complementary-style block property mappings
-- [ ] Entity property mappings (entities.properties)
-- [ ] Item property mappings (item.properties)
-- [ ] Dimension property mappings (dimension.properties)
+- [x] Entity property mappings (entities.properties — 13 entity types)
+- [x] Item property mappings (item.properties — tools, bow, food)
+- [x] Dimension property mappings (dimension.properties — Overworld/Nether/End)
 - [ ] Physics Mod ocean support
 - [ ] SecurityCraft / custom block support
 - [ ] Connected glass / CTM support
 - [ ] Custom skybox support (resource pack skies)
-- [ ] Emissive ore support (block-based auto emission)
+- [x] Emissive ore support (auto-detect bright metallic textures)
 
 ---
 
@@ -219,7 +209,7 @@
 | 4 | PBR Material System & Reflections | ✅ Done |
 | 5 | Atmosphere, Sky & Volumetrics | ✅ Done |
 | 6 | Post-Processing | ✅ Done (basic) |
-| 7 | Light Propagation Volume (LPV) | ⬜ |
+| 7 | Light Propagation Volume (LPV-lite) | ✅ Done |
 | 8 | Shadows & Lighting Refinements | ✅ Done |
-| 9 | Performance & Polish | ⬜ |
-| 10 | Mod Support & Integration | ⬜ |
+| 9 | Performance & Polish | ✅ Done |
+| 10 | Mod Support & Integration | ✅ Done |

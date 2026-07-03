@@ -415,6 +415,32 @@ vec3 volumetricFog(vec3 cameraDir, float viewDist, vec3 lightDir, vec3 lightCol,
     return fogColor;
 }
 
+vec3 sampleEmissiveLight(vec2 uv, vec3 normal, vec2 texelSize) {
+    vec3 lightAccum = vec3(0.0);
+    float weightSum = 0.0;
+
+    for (int x = -3; x <= 3; x++) {
+        for (int y = -3; y <= 3; y++) {
+            vec2 suv = uv + vec2(float(x), float(y)) * texelSize * 2.0;
+            if (suv.x < 0.0 || suv.x > 1.0 || suv.y < 0.0 || suv.y > 1.0) continue;
+
+            vec4 smat = texture2D(colortex2, suv);
+            float em = smat.a;
+            if (em < 0.01) continue;
+
+            float dist = length(vec2(float(x), float(y)));
+            float w = exp(-dist * 0.4) * em;
+
+            vec3 salb = texture2D(colortex0, suv).rgb;
+            lightAccum += salb * w * 2.0;
+            weightSum += w;
+        }
+    }
+
+    if (weightSum < 0.01) return vec3(0.0);
+    return lightAccum / weightSum;
+}
+
 vec3 computeSSRTGI(vec3 viewPos, vec3 normal, vec3 noise, vec2 texcoord,
     float sunVisibility, vec3 sunVec, vec3 ambientCol, vec3 lightCol,
     int rayCount, float rayIterations) {
@@ -480,6 +506,7 @@ void main() {
     float metallic = mat.g;
     float sss = mat.b;
     float emission = mat.a;
+    vec2 texelSize = 1.0 / vec2(viewWidth, viewHeight);
 
     float depth = texture2D(depthtex0, texcoord).r;
     vec3 viewPos = getViewPos(texcoord, depth);
@@ -514,7 +541,7 @@ void main() {
     vec3 ambientColSqrt = mix(ambientNight, ambientSun, sunVisibility);
     vec3 ambientCol = ambientColSqrt * ambientColSqrt;
 
-    vec3 torchCol = vec3(1.0, 0.45, 0.08) * 4.0;
+    vec3 torchCol = mix(vec3(1.0, 0.45, 0.08), vec3(0.4, 0.6, 1.0), smoothstep(0.5, 1.0, lm.x)) * 4.0;
 
     float NdotL = max(dot(normal, lightDir), 0.0);
 
@@ -576,9 +603,12 @@ void main() {
         interleavedGradientNoise(noiseUV + vec2(0.0, 1.0))
     );
 
+    float ssrtgiRayCount = mix(2.0, 6.0, 1.0 - linZ(depth));
+    ssrtgiRayCount = clamp(ssrtgiRayCount, 2.0, 6.0);
+
     vec3 rawGI = computeSSRTGI(viewPos, normal, noise, texcoord,
         sunVisibility, sunVec, ambientCol, lightCol,
-        4, 12.0);
+        int(ssrtgiRayCount), 12.0);
 
     giResult = mix(prevGI, rawGI, blend);
 
@@ -588,6 +618,11 @@ void main() {
     float viewDist = length(viewPos);
     vec3 fog = volumetricFog(camDir, viewDist, lightDir, lightCol, sunVisibility, noise.z);
     color = mix(color, fog, 0.3);
+
+    if (emission < 0.01) {
+        vec3 emissiveLight = sampleEmissiveLight(texcoord, normal, texelSize);
+        color += emissiveLight * albedo * 0.15;
+    }
 
     gl_FragData[0] = vec4(color, 1.0);
     gl_FragData[1] = vec4(giResult, 1.0);
